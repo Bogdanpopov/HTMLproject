@@ -1,0 +1,21 @@
+import datetime
+
+import sqlalchemy
+from sqlalchemy import orm, ForeignKey
+
+from .db_session import SqlAlchemyBase
+
+
+class Review(SqlAlchemyBase):
+    __tablename__ = 'review'
+
+    id = sqlalchemy.Column(sqlalchemy.Integer,
+                           primary_key=True, autoincrement=True)
+    brand_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('brands.id'))
+    brand = orm.relation('Brands')
+    model = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    user_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id'))
+    user = orm.relation('User')
+    date = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now)
+    text = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+
