@@ -46,6 +46,51 @@ def add_review():
                            form=form)
 
 
+# редактировать обзор
+@app.route('/review/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_review(id):
+    session = db_session.create_session()
+    form = ReviewForm()
+    form.brand.choices = [(x.id, x.name) for x in session.query(Brands).order_by(Brands.name.asc())]
+    if request.method == "GET":
+        review = session.query(Review).filter(Review.id == id, Review.user == current_user).first()
+        if review:
+            form.brand.data = review.brand_id
+            form.model.data = review.model
+            form.text.data = review.text
+        else:
+            abort(404)
+    if form.validate_on_submit():
+        session = db_session.create_session()
+        review = session.query(Review).filter(Review.id == id,
+                                              Review.user == current_user).first()
+        if review:
+            review.brand_id = form.brand.data
+            review.model = form.model.data
+            review.text = form.text.data
+            session.commit()
+            return redirect('/')
+        else:
+            abort(404)
+    return render_template('review.html', title='Редактирование записи', form=form)
+
+
+# удалить обзор
+@app.route('/delete_review/<int:id>', methods=['GET', 'POST'])
+@login_required
+def delete_review(id):
+    session = db_session.create_session()
+    review = session.query(Review).filter(Review.id == id,
+                                          Review.user == current_user).first()
+    if review:
+        session.delete(review)
+        session.commit()
+    else:
+        abort(404)
+    return redirect('/')
+
+
 @login_manager.user_loader
 def load_user(user_id):
     session = db_session.create_session()
