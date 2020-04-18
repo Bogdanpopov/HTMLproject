@@ -1,11 +1,15 @@
-from flask import Flask, url_for, render_template, redirect
-from flask_login import LoginManager, login_user, login_required, logout_user
-
-from data import db_session
+from flask import Flask, url_for, render_template, redirect, request
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from werkzeug.exceptions import abort
 
 from data.loginform import LoginForm
 from data.register_form import RegisterForm
 from data.review import Review
+from data.brands import Brands
+from data.reviewform import ReviewForm
+
+from data import db_session
+
 from data.users import User
 
 app = Flask(__name__)
@@ -15,9 +19,31 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 
-@app.route('/')
+@app.route("/")
 def auto():
-    return render_template('base.html')
+    session = db_session.create_session()
+    reviews = session.query(Review).all()
+    return render_template("index.html", reviews=reviews)
+
+
+# добавить отзыв
+@app.route('/review', methods=['GET', 'POST'])
+@login_required
+def add_review():
+    session = db_session.create_session()
+    form = ReviewForm()
+    form.brand.choices = [(x.id, x.name) for x in session.query(Brands).order_by(Brands.name.asc())]
+    if form.validate_on_submit():
+        reviews = Review()
+        reviews.brand_id = form.brand.data
+        reviews.model = form.model.data
+        reviews.text = form.text.data
+        current_user.reviews.append(reviews)
+        session.merge(current_user)
+        session.commit()
+        return redirect('/')
+    return render_template('review.html', title='Добавление записи',
+                           form=form)
 
 
 @login_manager.user_loader
@@ -41,14 +67,6 @@ def login():
     return render_template('login.html', title='Авторизация', form=form)
 
 
-@app.route("/")
-def index():
-    session = db_session.create_session()
-    reviews = session.query(Review).all()
-    return render_template("index.html", reviews=reviews)
-
-
-@app.route('/register', methods=['GET', 'POST'])
 @app.route('/logout')
 @login_required
 def logout():
@@ -56,6 +74,7 @@ def logout():
     return redirect("/")
 
 
+@app.route('/register', methods=['GET', 'POST'])
 def reqister():
     form = RegisterForm()
     if form.validate_on_submit():
